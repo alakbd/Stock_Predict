@@ -118,6 +118,16 @@ def get_market_news():
     except Exception:
         return ["Could not fetch news at this time."]
 
+
+# Sidebar settings
+st.sidebar.header("Settings")
+tickers_input = st.sidebar.text_area("Tickers (comma-separated):",
+                                     "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR")
+tickers = [t.strip() for t in tickers_input.split(",") if t.strip()]
+
+period = st.sidebar.selectbox("Data Period", ["6mo", "1y", "2y", "5y"], index=2)
+interval = st.sidebar.selectbox("Interval", ["1d", "1wk", "1mo"], index=0)
+
 # --- Streamlit App Layout ---
 st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 
@@ -146,14 +156,7 @@ for title, url in news_links:
 st.title("📈 Trading Signal Dashboard with Crash Warnings")
 st.write("Signals based on **MA50**, **RSI(14)**, and crash detection rules with news insights.")
 
-# Sidebar settings
-st.sidebar.header("Settings")
-tickers_input = st.sidebar.text_area("Tickers (comma-separated):",
-                                     "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR")
-tickers = [t.strip() for t in tickers_input.split(",") if t.strip()]
 
-period = st.sidebar.selectbox("Data Period", ["6mo", "1y", "2y", "5y"], index=2)
-interval = st.sidebar.selectbox("Interval", ["1d", "1wk", "1mo"], index=0)
 
 # Main content
 for ticker in tickers:
