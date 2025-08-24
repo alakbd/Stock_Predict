@@ -120,7 +120,7 @@ def get_market_news():
 
 
 # Sidebar settings
-st.sidebar.header("Settings")
+
 tickers_input = st.sidebar.text_area("Tickers (comma-separated):",
                                      "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR")
 tickers = [t.strip() for t in tickers_input.split(",") if t.strip()]
