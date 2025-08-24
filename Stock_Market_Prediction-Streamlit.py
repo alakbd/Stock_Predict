@@ -101,8 +101,8 @@ def generate_signals(df):
 # --- Streamlit App ---
 st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 
-st.title("📈 Trading Signal Dashboard with Crash Warnings")
-st.write("Signals based on **MA50**, **RSI(14)**, and extra crash detection rules 🚨.")
+st.title("📈 Trading Signal Dashboard")
+st.write("Signals based on **MA50**, **RSI(14)**, and extra crash detection rules if Stock has fallen more than 10% from peak 🚨.")
 
 # Sidebar inputs
 st.sidebar.header("Settings")
