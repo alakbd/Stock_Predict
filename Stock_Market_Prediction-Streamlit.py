@@ -65,6 +65,10 @@ def build_frame(df):
     out["Close"] = df["Close"].astype(float)
     out[f"MA{MA_PERIOD}"] = calculate_MA(out["Close"], MA_PERIOD)
     out["RSI"] = calculate_RSI(out["Close"], RSI_PERIOD)
+
+    # Extra metrics for crash detection
+    out["Drawdown"] = (out["Close"] / out["Close"].cummax() - 1) * 100
+    out["DailyChange"] = out["Close"].pct_change() * 100
     return out
 
 def generate_signals(df):
@@ -73,9 +77,17 @@ def generate_signals(df):
         close = df["Close"].iloc[i]
         ma = df[f"MA{MA_PERIOD}"].iloc[i]
         rsi = df["RSI"].iloc[i]
+        drawdown = df["Drawdown"].iloc[i]
+        daily_change = df["DailyChange"].iloc[i]
 
         if pd.isna(ma) or pd.isna(rsi):
             signals.append("HOLD ➖")
+        elif drawdown < -10:  # Stock has fallen more than 10% from peak
+            signals.append("SELL NOW 🚨 Crash Warning")
+        elif daily_change < -5:  # Big daily drop
+            signals.append("⚠️ SELL NOW - Sharp Drop")
+        elif rsi < 25:  # Oversold panic
+            signals.append("SELL 🚨 Oversold Panic")
         elif close > ma and rsi < 70:
             signals.append("BUY ✅")
         elif close < ma and rsi > 30:
@@ -89,8 +101,8 @@ def generate_signals(df):
 # --- Streamlit App ---
 st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 
-st.title("📈 Trading Signal Dashboard")
-st.write("Get trading signals based on **Moving Average (MA50)** and **RSI (14)**.")
+st.title("📈 Trading Signal Dashboard with Crash Warnings")
+st.write("Signals based on **MA50**, **RSI(14)**, and extra crash detection rules 🚨.")
 
 # Sidebar inputs
 st.sidebar.header("Settings")
@@ -118,6 +130,7 @@ for ticker in tickers:
         f"**Close:** {latest['Close']:.2f} | "
         f"**MA{MA_PERIOD}:** {latest[f'MA{MA_PERIOD}']:.2f} | "
         f"**RSI:** {latest['RSI']:.2f} | "
+        f"**Drawdown:** {latest['Drawdown']:.2f}% | "
         f"**Signal:** {latest['Signal']}"
     )
 
@@ -146,6 +159,15 @@ for ticker in tickers:
     # Show table
     with st.expander(f"Show historical signals for {ticker}"):
         st.dataframe(frame.tail(30))
+
+    # Download option
+    csv = frame.to_csv().encode("utf-8")
+    st.download_button(
+        label=f"Download {ticker} signals as CSV",
+        data=csv,
+        file_name=f"{ticker}_signals.csv",
+        mime="text/csv",
+    )
 
 
 
