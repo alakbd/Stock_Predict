@@ -28,6 +28,10 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
+# For news fetching
+import requests
+from bs4 import BeautifulSoup
+
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 # --- Parameters ---
@@ -82,11 +86,11 @@ def generate_signals(df):
 
         if pd.isna(ma) or pd.isna(rsi):
             signals.append("HOLD ➖")
-        elif drawdown < -10:  # Stock has fallen more than 10% from peak
+        elif drawdown < -10:
             signals.append("SELL NOW 🚨 Crash Warning")
-        elif daily_change < -5:  # Big daily drop
+        elif daily_change < -5:
             signals.append("⚠️ SELL NOW - Sharp Drop")
-        elif rsi < 25:  # Oversold panic
+        elif rsi < 25:
             signals.append("SELL 🚨 Oversold Panic")
         elif close > ma and rsi < 70:
             signals.append("BUY ✅")
@@ -98,19 +102,40 @@ def generate_signals(df):
     df["Signal"] = signals
     return df
 
-# --- Streamlit App ---
+# --- Simple News Fetcher ---
+@st.cache_data(ttl=600)
+def get_market_news():
+    url = "https://www.investopedia.com/what-to-expect-in-markets-this-week-nvidia-earnings-a-key-measure-of-inflation-and-more-11795525"
+    headlines = []
+    try:
+        resp = requests.get(url, timeout=5)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for h in soup.select("h1, h2, h3"):
+            text = h.get_text(strip=True)
+            if len(text) > 10:
+                headlines.append(text)
+        return headlines[:5]
+    except Exception:
+        return ["Could not fetch news at this time."]
+
+# --- Streamlit App Layout ---
 st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 
-st.title("📈 Trading Signal Dashboard")
-st.write("Signals based on **MA50**, **RSI(14)**, and extra crash detection rules if Stock has fallen more than 10% from peak 🚨.")
+st.sidebar.header("Top Market News & Analysis")
+news = get_market_news()
+for i, item in enumerate(news, 1):
+    st.sidebar.markdown(f"**{i}. {item}**")
 
-# Sidebar inputs
+st.title("📈 Trading Signal Dashboard with Crash Warnings")
+st.write("Signals based on **MA50**, **RSI(14)**, and crash detection rules with news insights.")
+
+# Sidebar settings
 st.sidebar.header("Settings")
-tickers = st.sidebar.text_area("Enter tickers (comma-separated):", 
-                               "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR").split(",")
-tickers = [t.strip() for t in tickers if t.strip()]
+tickers_input = st.sidebar.text_area("Tickers (comma-separated):",
+                                     "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR")
+tickers = [t.strip() for t in tickers_input.split(",") if t.strip()]
 
-period = st.sidebar.selectbox("Period", ["6mo", "1y", "2y", "5y"], index=2)
+period = st.sidebar.selectbox("Data Period", ["6mo", "1y", "2y", "5y"], index=2)
 interval = st.sidebar.selectbox("Interval", ["1d", "1wk", "1mo"], index=0)
 
 # Main content
@@ -122,7 +147,6 @@ for ticker in tickers:
 
     frame = build_frame(df)
     frame = generate_signals(frame)
-
     latest = frame.tail(1).iloc[0]
 
     st.subheader(f"📊 {ticker}")
@@ -134,41 +158,25 @@ for ticker in tickers:
         f"**Signal:** {latest['Signal']}"
     )
 
-    # --- Chart ---
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10,6), sharex=True,
+    # Charts
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=True,
                                    gridspec_kw={'height_ratios': [3, 1]})
-
-    # Price + MA
     ax1.plot(frame.index, frame["Close"], label="Close", color="blue")
     ax1.plot(frame.index, frame[f"MA{MA_PERIOD}"], label=f"MA{MA_PERIOD}", color="orange")
-    ax1.set_ylabel("Price")
-    ax1.legend()
-    ax1.grid(True)
+    ax1.legend(); ax1.grid(True); ax1.set_ylabel("Price")
 
-    # RSI
     ax2.plot(frame.index, frame["RSI"], label="RSI", color="purple")
     ax2.axhline(70, color="red", linestyle="--")
     ax2.axhline(30, color="green", linestyle="--")
-    ax2.set_ylabel("RSI")
-    ax2.set_xlabel("Date")
-    ax2.legend()
-    ax2.grid(True)
+    ax2.legend(); ax2.grid(True); ax2.set_ylabel("RSI"); ax2.set_xlabel("Date")
 
     st.pyplot(fig)
 
-    # Show table
-    with st.expander(f"Show historical signals for {ticker}"):
+    with st.expander(f"Historical signals for {ticker}"):
         st.dataframe(frame.tail(30))
 
-    # Download option
     csv = frame.to_csv().encode("utf-8")
-    st.download_button(
-        label=f"Download {ticker} signals as CSV",
-        data=csv,
-        file_name=f"{ticker}_signals.csv",
-        mime="text/csv",
-    )
-
+    st.download_button(f"Download {ticker} CSV", csv, file_name=f"{ticker}_signals.csv", mime="text/csv")
 
 
 # In[ ]:
