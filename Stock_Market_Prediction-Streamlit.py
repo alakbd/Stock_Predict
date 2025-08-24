@@ -131,9 +131,6 @@ interval = st.sidebar.selectbox("Interval", ["1d", "1wk", "1mo"], index=0)
 # --- Streamlit App Layout ---
 st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 
-st.title("📈 Trading Signal Dashboard with Crash Warnings")
-st.write("Signals based on **MA50**, **RSI(14)**, and crash detection rules with news insights.")
-
 
 
 # Sidebar news (moved below settings, now clickable links)
