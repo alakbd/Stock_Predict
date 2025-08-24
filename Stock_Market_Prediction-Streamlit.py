@@ -151,7 +151,7 @@ for title, url in news_links:
     st.sidebar.markdown(f"- [{title}]({url})")
 
 st.title("📈 Trading Signal Dashboard with Crash Warnings")
-st.write("Signals based on **MA50**, **RSI(14)**, and crash detection rules with news insights.")
+st.write("Signals based on **MA50**, **RSI(14)**, and extra crash detection rules if the Stock has fallen more than 10% from peak with news insights.")
 
 
 
