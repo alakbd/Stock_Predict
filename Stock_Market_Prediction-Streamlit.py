@@ -129,55 +129,27 @@ period = st.sidebar.selectbox("Data Period", ["6mo", "1y", "2y", "5y"], index=2)
 interval = st.sidebar.selectbox("Interval", ["1d", "1wk", "1mo"], index=0)
 
 # --- Streamlit App Layout ---
-# --- Streamlit App Layout ---
 st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 
-st.title("📈 Trading Signal Dashboard with Crash Warnings")
-st.write("Signals based on **MA50**, **RSI(14)**, and crash detection—now with live market news.")
 
-# Sidebar Settings
-st.sidebar.header("Settings")
-tickers_input = st.sidebar.text_area(
-    "Tickers (comma-separated):",
-    "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR",
-    key="ticker_input"
-)
-tickers = [t.strip() for t in tickers_input.split(",") if t.strip()]
 
-period = st.sidebar.selectbox("Data Period", ["6mo", "1y", "2y", "5y"], index=2)
-interval = st.sidebar.selectbox("Interval", ["1d", "1wk", "1mo"], index=0)
-
+# Sidebar news (moved below settings, now clickable links)
 st.sidebar.markdown("---")
 st.sidebar.header("📰 Top Market News & Analysis")
 
-# Live-scraped news using BeautifulSoup
-@st.cache_data(ttl=600)
-def fetch_news():
-    news_list = []
-    urls = [
-        "https://www.irishtimes.com/business/markets/",  # general Irish market analysis
-        "https://www.thejournal.ie/",                      # Irish business headlines
-    ]
-    try:
-        for url in urls:
-            resp = requests.get(url, timeout=5)
-            soup = BeautifulSoup(resp.text, "html.parser")
-            for a in soup.select("a"):
-                text = a.get_text(strip=True)
-                href = a.get("href")
-                if href and text and len(text) > 40:
-                    link = href if href.startswith("http") else f"{url.rstrip('/')}/{href.lstrip('/')}"
-                    news_list.append((text, link))
-        return news_list[:5]
-    except Exception:
-        return []
+# Example static links (could also fetch dynamically)
+news_links = [
+    ("Dow Jones Futures: Nvidia Is Next Big Market Test After Powell-Led Rally",
+     "https://www.investors.com/market-trend/stock-market-today/dow-jones-futures-market-rallies-highs-dovish-powell-nvidia-earnings/?utm_source=chatgpt.com"),
+    ("After 9 months on hold, the Fed could cut rates in September",
+     "https://www.marketwatch.com/story/after-9-months-on-hold-the-fed-could-cut-rates-in-september-why-the-long-pause-may-extend-stocks-rally-e90f3012?utm_source=chatgpt.com"),
+    ("The stock market soared following Fed Chair Powell's speech",
+     "https://www.marketwatch.com/story/the-stock-market-is-surging-following-fed-chair-powells-speech-why-it-might-just-be-a-late-summer-rally-95e4c2bd?utm_source=chatgpt.com"),
+]
 
-news_items = fetch_news()
-if news_items:
-    for title, link in news_items:
-        st.sidebar.markdown(f"- [{title}]({link})")
-else:
-    st.sidebar.write("Could not fetch market news at this time.")
+for title, url in news_links:
+    st.sidebar.markdown(f"- [{title}]({url})")
+
 
 
 st.title("📈 Trading Signal Dashboard")
