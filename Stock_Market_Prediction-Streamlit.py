@@ -122,7 +122,7 @@ def get_market_news():
 # Sidebar settings
 
 tickers_input = st.sidebar.text_area("Tickers (comma-separated):",
-                                     "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR")
+                                     "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR,GC=F, CL=F, BZ=F,SI=F,NG=F,HG=F")
 tickers = [t.strip() for t in tickers_input.split(",") if t.strip()]
 
 period = st.sidebar.selectbox("Data Period", ["6mo", "1y", "2y", "5y"], index=2)
@@ -145,6 +145,9 @@ news_links = [
      "https://www.marketwatch.com/story/after-9-months-on-hold-the-fed-could-cut-rates-in-september-why-the-long-pause-may-extend-stocks-rally-e90f3012?utm_source=chatgpt.com"),
     ("The stock market soared following Fed Chair Powell's speech",
      "https://www.marketwatch.com/story/the-stock-market-is-surging-following-fed-chair-powells-speech-why-it-might-just-be-a-late-summer-rally-95e4c2bd?utm_source=chatgpt.com"),
+    "https://www.irishtimes.com/business/markets/",
+    "https://www.reuters.com/markets/commodities/",
+    "https://www.bloomberg.com/commodities"
 ]
 
 for title, url in news_links:
