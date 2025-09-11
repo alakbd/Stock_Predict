@@ -145,9 +145,7 @@ news_links = [
      "https://www.marketwatch.com/story/after-9-months-on-hold-the-fed-could-cut-rates-in-september-why-the-long-pause-may-extend-stocks-rally-e90f3012?utm_source=chatgpt.com"),
     ("The stock market soared following Fed Chair Powell's speech",
      "https://www.marketwatch.com/story/the-stock-market-is-surging-following-fed-chair-powells-speech-why-it-might-just-be-a-late-summer-rally-95e4c2bd?utm_source=chatgpt.com"),
-    "https://www.irishtimes.com/business/markets/",
-    "https://www.reuters.com/markets/commodities/",
-    "https://www.bloomberg.com/commodities"
+    
 ]
 
 for title, url in news_links:
