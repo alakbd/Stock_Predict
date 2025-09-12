@@ -111,8 +111,8 @@ def fetch_dynamic_news(source="Global"):
 
     if source == "Global":
         sources = {
-            "Yahoo Finance Commodities": "https://finance.yahoo.com/topic/commodities/",
-            "Investing.com Commodities": "https://www.investing.com/news/commodities-news",
+            "Reuters Commodities": "https://www.reuters.com/markets/commodities/",
+            "Bloomberg Commodities": "https://www.bloomberg.com/commodities/",
         }
     elif source == "Irish":
         sources = {
@@ -122,23 +122,12 @@ def fetch_dynamic_news(source="Global"):
 
     for name, url in sources.items():
         try:
-            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            resp = requests.get(url, timeout=10)
             soup = BeautifulSoup(resp.text, "html.parser")
-
-            # Yahoo Finance headlines
-            if "yahoo" in url:
-                headlines = soup.select("h3 a")
-            # Investing.com headlines
-            elif "investing" in url:
-                headlines = soup.select("article a")
-            # Irish Times / The Journal fallback
-            else:
-                headlines = soup.find_all("a", href=True)
-
-            for a in headlines:
+            for a in soup.find_all("a", href=True):
                 title = a.get_text(strip=True)
-                href = a.get("href")
-                if title and len(title) > 15:
+                href = a["href"]
+                if title and len(title) > 40:
                     link = href if href.startswith("http") else url.rstrip("/") + "/" + href.lstrip("/")
                     news_items.append((title, link))
         except Exception as e:
