@@ -121,6 +121,9 @@ def fetch_dynamic_news(source="Global", max_articles=10):
         feeds = [
             "https://businessandfinance.com/feed/",   # Business Finance RSS
             "https://www.breakingnews.ie/feed/business.rss",          # The Breaking News RSS
+            "https://www.thejournal.ie/business/",
+            "https://startups.ie/feed/",
+
         ]
 
     # Parse each feed
