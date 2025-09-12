@@ -29,6 +29,7 @@ import warnings
 import matplotlib.pyplot as plt
 
 # For news fetching
+import feedparser
 import requests
 from bs4 import BeautifulSoup
 
@@ -107,35 +108,42 @@ def generate_signals(df):
 @st.cache_data(ttl=3600)  # refresh every hour
 def fetch_dynamic_news(source="Global"):
     news_items = []
-    sources = {}
 
     if source == "Global":
-        sources = {
-            "CNBC World": "https://www.cnbc.com/world/?region=world",
-            "MarketWatch": "https://www.marketwatch.com/markets",
-           
-        }
+        feeds = [
+            "https://feeds.reuters.com/reuters/businessNews",
+            "https://www.ft.com/markets?format=rss",
+            "https://www.marketwatch.com/rss/topstories",
+        ]
+        for feed_url in feeds:
+            try:
+                feed = feedparser.parse(feed_url)
+                for entry in feed.entries[:3]:  # top 3 per source
+                    news_items.append((entry.title, entry.link))
+            except Exception as e:
+                news_items.append((f"⚠️ Could not fetch feed: {e}", feed_url))
+
     elif source == "Irish":
         sources = {
             "Irish Times Markets": "https://www.irishtimes.com/business/markets/",
             "The Journal Business": "https://www.thejournal.ie/business/",
         }
+        headers = {"User-Agent": "Mozilla/5.0"}
+        for name, url in sources.items():
+            try:
+                resp = requests.get(url, timeout=10, headers=headers)
+                soup = BeautifulSoup(resp.text, "html.parser")
+                headlines = soup.find_all("a", href=True)
+                for a in headlines[:5]:
+                    title = a.get_text(strip=True)
+                    href = a.get("href")
+                    if title and len(title) > 15:
+                        link = href if href.startswith("http") else url.rstrip("/") + "/" + href.lstrip("/")
+                        news_items.append((title, link))
+            except Exception as e:
+                news_items.append((f"⚠️ Could not fetch {name}: {e}", url))
 
-    for name, url in sources.items():
-        try:
-            resp = requests.get(url, timeout=10)
-            soup = BeautifulSoup(resp.text, "html.parser")
-            for a in soup.find_all("a", href=True):
-                title = a.get_text(strip=True)
-                href = a["href"]
-                if title and len(title) > 40:
-                    link = href if href.startswith("http") else url.rstrip("/") + "/" + href.lstrip("/")
-                    news_items.append((title, link))
-        except Exception as e:
-            news_items.append((f"⚠️ Could not fetch {name}: {e}", url))
-
-    return news_items[:8]
-
+    return news_items[:10]
 # Sidebar settings
 
 tickers_input = st.sidebar.text_area("Tickers (comma-separated):",
