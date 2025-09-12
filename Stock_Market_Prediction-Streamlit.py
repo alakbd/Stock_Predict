@@ -106,52 +106,33 @@ def generate_signals(df):
 
 
 # --- Live News Scraper ---#
-@st.cache_data(ttl=3600)  # refresh every hour
-def fetch_dynamic_news(source="Global", max_articles=10):
+import feedparser
+
+@st.cache_data(ttl=3600)
+def fetch_dynamic_news(source="Global"):
     news_items = []
 
     if source == "Global":
         feeds = [
-            "https://feeds.reuters.com/reuters/businessNews",
-            "https://www.ft.com/markets?format=rss",
-            "https://www.marketwatch.com/rss/topstories",
+            "https://feeds.finance.yahoo.com/rss/2.0/headline?s=CL=F&region=US&lang=en-US",
+            "https://www.investing.com/rss/news_301.rss",
         ]
-        for feed_url in feeds:
-            try:
-                feed = feedparser.parse(feed_url)
-                for entry in feed.entries[:3]:  # top 3 per source
-                    news_items.append((entry.title, entry.link))
-            except Exception as e:
-                news_items.append((f"⚠️ Could not fetch feed: {e}", feed_url))
-
     elif source == "Irish":
-        sources = {
-            "Irish Times Markets": "https://www.irishtimes.com/business/markets/",
-            "The Journal Business": "https://www.thejournal.ie/business/",
-        }
-        headers = {"User-Agent": "Mozilla/5.0"}
-        for name, url in sources.items():
-            try:
-                resp = requests.get(url, timeout=10, headers=headers)
-                soup = BeautifulSoup(resp.text, "html.parser")
-                
-                # Grab headlines - this selector is more flexible
-                headlines = soup.find_all("a", href=True)
-                count = 0
-                for a in headlines:
-                    title = a.get_text(strip=True)
-                    href = a.get("href")
-                    if title and len(title) > 5 and href:
-                        link = urljoin(url, href)
-                        news_items.append((title, link))
-                        count += 1
-                    if count >= 5:  # max 5 per Irish source
-                        break
+        feeds = [
+            "https://www.irishtimes.com/cmlink/business-1.1319192",  # RSS
+            "https://www.thejournal.ie/feed/business/",              # RSS
+        ]
 
-            except Exception as e:
-                news_items.append((f"⚠️ Could not fetch {name}: {e}", url))
+    for feed_url in feeds:
+        try:
+            feed = feedparser.parse(feed_url)
+            for entry in feed.entries[:5]:
+                news_items.append((entry.title, entry.link))
+        except Exception as e:
+            news_items.append((f"⚠️ Could not fetch feed: {e}", feed_url))
 
-    return news_items[:max_articles]
+    return news_items[:10]
+
  
 # Sidebar settings
 
