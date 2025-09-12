@@ -106,10 +106,9 @@ def generate_signals(df):
 
 
 # --- Live News Scraper ---#
-import feedparser
 
 @st.cache_data(ttl=3600)
-def fetch_dynamic_news(source="Global"):
+def fetch_dynamic_news(source="Global", max_articles=10):
     news_items = []
 
     if source == "Global":
@@ -117,21 +116,47 @@ def fetch_dynamic_news(source="Global"):
             "https://feeds.finance.yahoo.com/rss/2.0/headline?s=CL=F&region=US&lang=en-US",
             "https://www.investing.com/rss/news_301.rss",
         ]
+        for feed_url in feeds:
+            try:
+                feed = feedparser.parse(feed_url)
+                for entry in feed.entries[:5]:
+                    news_items.append((entry.title, entry.link))
+            except Exception as e:
+                news_items.append((f"⚠️ Could not fetch feed: {e}", feed_url))
+
     elif source == "Irish":
-        feeds = [
-            "https://www.irishtimes.com/cmlink/business-1.1319192",  # RSS
-            "https://www.thejournal.ie/feed/business/",              # RSS
-        ]
+        sources = {
+            "The Journal Business": "https://www.thejournal.ie/feed/business/",
+            "Irish Times Markets": "https://www.irishtimes.com/business/markets/",  # HTML page
+        }
+        headers = {"User-Agent": "Mozilla/5.0"}
+        for name, url in sources.items():
+            if url.endswith(".rss") or url.endswith("/feed/business/"):  # RSS
+                try:
+                    feed = feedparser.parse(url)
+                    for entry in feed.entries[:5]:
+                        news_items.append((entry.title, entry.link))
+                except Exception as e:
+                    news_items.append((f"⚠️ Could not fetch feed: {e}", url))
+            else:  # HTML scraping
+                try:
+                    resp = requests.get(url, headers=headers, timeout=10)
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    headlines = soup.find_all("a", href=True)
+                    count = 0
+                    for a in headlines:
+                        title = a.get_text(strip=True)
+                        href = a.get("href")
+                        if title and len(title) > 5 and href:
+                            link = urljoin(url, href)
+                            news_items.append((title, link))
+                            count += 1
+                        if count >= 5:
+                            break
+                except Exception as e:
+                    news_items.append((f"⚠️ Could not fetch {name}: {e}", url))
 
-    for feed_url in feeds:
-        try:
-            feed = feedparser.parse(feed_url)
-            for entry in feed.entries[:5]:
-                news_items.append((entry.title, entry.link))
-        except Exception as e:
-            news_items.append((f"⚠️ Could not fetch feed: {e}", feed_url))
-
-    return news_items[:10]
+    return news_items[:max_articles]
 
  
 # Sidebar settings
