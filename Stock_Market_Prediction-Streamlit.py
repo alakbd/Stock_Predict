@@ -102,21 +102,28 @@ def generate_signals(df):
     df["Signal"] = signals
     return df
 
-# --- Simple News Fetcher ---
-@st.cache_data(ttl=600)
-def get_market_news():
-    url = "https://www.investopedia.com/what-to-expect-in-markets-this-week-nvidia-earnings-a-key-measure-of-inflation-and-more-11795525"
-    headlines = []
-    try:
-        resp = requests.get(url, timeout=5)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        for h in soup.select("h1, h2, h3"):
-            text = h.get_text(strip=True)
-            if len(text) > 10:
-                headlines.append(text)
-        return headlines[:5]
-    except Exception:
-        return ["Could not fetch news at this time."]
+
+# --- Live News Scraper ---#
+@st.cache_data(ttl=3600)  # refresh every hour
+def fetch_dynamic_news():
+    news_items = []
+    sources = {
+        "Reuters Commodities": "https://www.reuters.com/markets/commodities/",
+        "Irish Times Markets": "https://www.irishtimes.com/business/markets/",
+    }
+    for source, url in sources.items():
+        try:
+            resp = requests.get(url, timeout=10)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for a in soup.find_all("a", href=True):
+                title = a.get_text(strip=True)
+                href = a["href"]
+                if title and len(title) > 40:
+                    link = href if href.startswith("http") else url.rstrip("/") + "/" + href.lstrip("/")
+                    news_items.append((title, link))
+        except Exception as e:
+            news_items.append((f"⚠️ Could not fetch {source}: {e}", url))
+    return news_items[:8]
 
 
 # Sidebar settings
