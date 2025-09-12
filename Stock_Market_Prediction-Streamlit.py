@@ -105,13 +105,22 @@ def generate_signals(df):
 
 # --- Live News Scraper ---#
 @st.cache_data(ttl=3600)  # refresh every hour
-def fetch_dynamic_news():
+def fetch_dynamic_news(source="Global"):
     news_items = []
-    sources = {
-        "Reuters Commodities": "https://www.reuters.com/markets/commodities/",
-        "Irish Times Markets": "https://www.irishtimes.com/business/markets/",
-    }
-    for source, url in sources.items():
+    sources = {}
+
+    if source == "Global":
+        sources = {
+            "Reuters Commodities": "https://www.reuters.com/markets/commodities/",
+            "Bloomberg Commodities": "https://www.bloomberg.com/commodities/",
+        }
+    elif source == "Irish":
+        sources = {
+            "Irish Times Markets": "https://www.irishtimes.com/business/markets/",
+            "The Journal Business": "https://www.thejournal.ie/business/",
+        }
+
+    for name, url in sources.items():
         try:
             resp = requests.get(url, timeout=10)
             soup = BeautifulSoup(resp.text, "html.parser")
@@ -122,7 +131,8 @@ def fetch_dynamic_news():
                     link = href if href.startswith("http") else url.rstrip("/") + "/" + href.lstrip("/")
                     news_items.append((title, link))
         except Exception as e:
-            news_items.append((f"⚠️ Could not fetch {source}: {e}", url))
+            news_items.append((f"⚠️ Could not fetch {name}: {e}", url))
+
     return news_items[:8]
 
 
@@ -144,7 +154,10 @@ st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 # News Section
 st.sidebar.markdown("---")
 st.sidebar.header("📰 Live Market News")
-news = fetch_dynamic_news()
+
+news_choice = st.sidebar.radio("Select news source:", ["Global", "Irish"], index=0)
+news = fetch_dynamic_news(source=news_choice)
+
 if news:
     for title, link in news:
         st.sidebar.markdown(f"- [{title}]({link})")
