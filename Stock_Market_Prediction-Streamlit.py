@@ -20,7 +20,7 @@
 #RSI < 30 → Oversold → Buy Signal
 
 #RSI between 30–70 → Neutral / Hold
-
+!pip install feedparser
 import streamlit as st
 import yfinance as yf
 import pandas as pd
