@@ -119,8 +119,8 @@ def fetch_dynamic_news(source="Global", max_articles=10):
         ]
     elif source == "Irish":
         feeds = [
-            "https://www.irishtimes.com/cmlink/business-1.1319192",   # Irish Times Markets RSS
-            "https://www.thejournal.ie/feed/business/",          # The Journal Business RSS
+            "https://businessandfinance.com/feed/",   # Business Finance RSS
+            "https://www.breakingnews.ie/feed/business.rss",          # The Breaking News RSS
         ]
 
     # Parse each feed
