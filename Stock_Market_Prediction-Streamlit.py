@@ -152,8 +152,6 @@ else:
     st.sidebar.write("No news available right now.")
 
 
-for title, url in news_links:
-    st.sidebar.markdown(f"- [{title}]({url})")
 
 
 
