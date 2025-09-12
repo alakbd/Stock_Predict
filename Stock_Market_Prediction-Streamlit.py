@@ -27,6 +27,7 @@ import pandas as pd
 import numpy as np
 import warnings
 import matplotlib.pyplot as plt
+from urllib.parse import urljoin
 
 # For news fetching
 import feedparser
@@ -106,7 +107,7 @@ def generate_signals(df):
 
 # --- Live News Scraper ---#
 @st.cache_data(ttl=3600)  # refresh every hour
-def fetch_dynamic_news(source="Global"):
+def fetch_dynamic_news(source="Global", max_articles=10):
     news_items = []
 
     if source == "Global":
@@ -133,17 +134,25 @@ def fetch_dynamic_news(source="Global"):
             try:
                 resp = requests.get(url, timeout=10, headers=headers)
                 soup = BeautifulSoup(resp.text, "html.parser")
+                
+                # Grab headlines - this selector is more flexible
                 headlines = soup.find_all("a", href=True)
-                for a in headlines[:5]:
+                count = 0
+                for a in headlines:
                     title = a.get_text(strip=True)
                     href = a.get("href")
-                    if title and len(title) > 15:
-                        link = href if href.startswith("http") else url.rstrip("/") + "/" + href.lstrip("/")
+                    if title and len(title) > 5 and href:
+                        link = urljoin(url, href)
                         news_items.append((title, link))
+                        count += 1
+                    if count >= 5:  # max 5 per Irish source
+                        break
+
             except Exception as e:
                 news_items.append((f"⚠️ Could not fetch {name}: {e}", url))
 
-    return news_items[:10]
+    return news_items[:max_articles]
+ 
 # Sidebar settings
 
 tickers_input = st.sidebar.text_area("Tickers (comma-separated):",
