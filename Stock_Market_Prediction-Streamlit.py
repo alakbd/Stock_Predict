@@ -25,18 +25,18 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import requests
+from bs4 import BeautifulSoup
 import warnings
 import matplotlib.pyplot as plt
 
-# For news fetching
-import requests
-from bs4 import BeautifulSoup
-
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
-# --- Parameters ---
+# --- Config ---
 MA_PERIOD = 50
 RSI_PERIOD = 14
+
+st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 
 # --- Indicators ---
 def calculate_MA(series, period):
@@ -46,16 +46,13 @@ def calculate_RSI(series, period=14):
     delta = series.diff()
     gain = np.where(delta > 0, delta, 0)
     loss = np.where(delta < 0, -delta, 0)
-
     avg_gain = pd.Series(gain, index=series.index).rolling(period).mean()
     avg_loss = pd.Series(loss, index=series.index).rolling(period).mean()
-
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
 # --- Data Fetch ---
-@st.cache_data
 def fetch_data(ticker, period="1y", interval="1d"):
     try:
         data = yf.download(ticker, period=period, interval=interval, progress=False)
@@ -69,10 +66,6 @@ def build_frame(df):
     out["Close"] = df["Close"].astype(float)
     out[f"MA{MA_PERIOD}"] = calculate_MA(out["Close"], MA_PERIOD)
     out["RSI"] = calculate_RSI(out["Close"], RSI_PERIOD)
-
-    # Extra metrics for crash detection
-    out["Drawdown"] = (out["Close"] / out["Close"].cummax() - 1) * 100
-    out["DailyChange"] = out["Close"].pct_change() * 100
     return out
 
 def generate_signals(df):
@@ -81,85 +74,101 @@ def generate_signals(df):
         close = df["Close"].iloc[i]
         ma = df[f"MA{MA_PERIOD}"].iloc[i]
         rsi = df["RSI"].iloc[i]
-        drawdown = df["Drawdown"].iloc[i]
-        daily_change = df["DailyChange"].iloc[i]
 
         if pd.isna(ma) or pd.isna(rsi):
             signals.append("HOLD ➖")
-        elif drawdown < -10:
-            signals.append("SELL NOW 🚨 Crash Warning")
-        elif daily_change < -5:
-            signals.append("⚠️ SELL NOW - Sharp Drop")
-        elif rsi < 25:
-            signals.append("SELL 🚨 Oversold Panic")
         elif close > ma and rsi < 70:
             signals.append("BUY ✅")
         elif close < ma and rsi > 30:
             signals.append("SELL ❌")
         else:
             signals.append("HOLD ➖")
-
     df["Signal"] = signals
     return df
 
-# --- Simple News Fetcher ---
-@st.cache_data(ttl=600)
-def get_market_news():
-    url = "https://www.investopedia.com/what-to-expect-in-markets-this-week-nvidia-earnings-a-key-measure-of-inflation-and-more-11795525"
-    headlines = []
-    try:
-        resp = requests.get(url, timeout=5)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        for h in soup.select("h1, h2, h3"):
-            text = h.get_text(strip=True)
-            if len(text) > 10:
-                headlines.append(text)
-        return headlines[:5]
-    except Exception:
-        return ["Could not fetch news at this time."]
+# --- Crash / Drawdown Check ---
+def detect_crash(df, threshold=15):
+    rolling_max = df["Close"].cummax()
+    drawdown = (df["Close"] / rolling_max - 1) * 100
+    df["Drawdown"] = drawdown
+    recent = drawdown.iloc[-1]
+    if recent < -threshold:
+        return f"⚠️ Market Crash Warning! Current Drawdown: {recent:.2f}%"
+    return f"✅ Stable. Current Drawdown: {recent:.2f}%"
 
+# --- Performance Metrics ---
+def calculate_performance(df):
+    if df is None or df.empty:
+        return None
+    start_price = df["Close"].iloc[0]
+    end_price = df["Close"].iloc[-1]
+    total_return = (end_price / start_price - 1) * 100
+    days = (df.index[-1] - df.index[0]).days
+    if days > 0:
+        cagr = ((end_price / start_price) ** (365 / days) - 1) * 100
+    else:
+        cagr = np.nan
+    rolling_max = df["Close"].cummax()
+    drawdown = (df["Close"] / rolling_max - 1).min() * 100
+    daily_returns = df["Close"].pct_change().dropna()
+    volatility = daily_returns.std() * np.sqrt(252) * 100
+    return {
+        "Total Return (%)": total_return,
+        "CAGR (%)": cagr,
+        "Max Drawdown (%)": drawdown,
+        "Volatility (%)": volatility,
+    }
 
-# Sidebar settings
+# --- Live News Scraper ---
+@st.cache_data(ttl=3600)  # refresh every hour
+def fetch_dynamic_news():
+    news_items = []
+    sources = {
+        "Reuters Commodities": "https://www.reuters.com/markets/commodities/",
+        "Irish Times Markets": "https://www.irishtimes.com/business/markets/",
+    }
+    for source, url in sources.items():
+        try:
+            resp = requests.get(url, timeout=10)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for a in soup.find_all("a", href=True):
+                title = a.get_text(strip=True)
+                href = a["href"]
+                if title and len(title) > 40:
+                    link = href if href.startswith("http") else url.rstrip("/") + "/" + href.lstrip("/")
+                    news_items.append((title, link))
+        except Exception as e:
+            news_items.append((f"⚠️ Could not fetch {source}: {e}", url))
+    return news_items[:8]
 
-tickers_input = st.sidebar.text_area("Tickers (comma-separated):",
-                                     "AAPL, RYA.IR, PTSB.IR, IRES.IR, A5G.IR, GVR.IR, UPR.IR, DHG.IR, GRP.IR,GC=F, CL=F, BZ=F,SI=F,NG=F,HG=F")
+# --- Streamlit UI ---
+st.title("📈 Trading Signal Dashboard with Crash Warnings")
+st.write("Signals based on **MA50**, **RSI(14)**, crash detection, and live market news.")
+
+# Sidebar
+st.sidebar.header("Settings")
+tickers_input = st.sidebar.text_area(
+    "Tickers (comma-separated):",
+    "AAPL, RYA.IR, PTSB.IR, GC=F, CL=F, BZ=F",
+    key="ticker_input"
+)
 tickers = [t.strip() for t in tickers_input.split(",") if t.strip()]
-
 period = st.sidebar.selectbox("Data Period", ["6mo", "1y", "2y", "5y"], index=2)
 interval = st.sidebar.selectbox("Interval", ["1d", "1wk", "1mo"], index=0)
 
-# --- Streamlit App Layout ---
-st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
-
-
-
-# Sidebar news (moved below settings, now clickable links)
+# News Section
 st.sidebar.markdown("---")
-st.sidebar.header("📰 Top Market News & Analysis")
+st.sidebar.header("📰 Live Market News")
+news = fetch_dynamic_news()
+if news:
+    for title, link in news:
+        st.sidebar.markdown(f"- [{title}]({link})")
+else:
+    st.sidebar.write("No news available right now.")
 
-# Example static links (could also fetch dynamically)
-news_links = [
-    ("Dow Jones Futures: Nvidia Is Next Big Market Test After Powell-Led Rally",
-     "https://www.investors.com/market-trend/stock-market-today/dow-jones-futures-market-rallies-highs-dovish-powell-nvidia-earnings/?utm_source=chatgpt.com"),
-    ("After 9 months on hold, the Fed could cut rates in September",
-     "https://www.marketwatch.com/story/after-9-months-on-hold-the-fed-could-cut-rates-in-september-why-the-long-pause-may-extend-stocks-rally-e90f3012?utm_source=chatgpt.com"),
-    ("The stock market soared following Fed Chair Powell's speech",
-     "https://www.marketwatch.com/story/the-stock-market-is-surging-following-fed-chair-powells-speech-why-it-might-just-be-a-late-summer-rally-95e4c2bd?utm_source=chatgpt.com"),
-    
-]
-
-for title, url in news_links:
-    st.sidebar.markdown(f"- [{title}]({url})")
-
-
-
-st.title("📈 Trading Signal Dashboard")
-st.write("Signals based on **MA50**, **RSI(14)**, and extra crash detection rules if the Stock has fallen more than 10% from peak with news insights.")
-
-
-
-# Main content
+# --- Main Content ---
 for ticker in tickers:
+    st.subheader(f"📌 {ticker}")
     df = fetch_data(ticker, period=period, interval=interval)
     if df is None or df.empty:
         st.warning(f"No data for {ticker}")
@@ -167,36 +176,34 @@ for ticker in tickers:
 
     frame = build_frame(df)
     frame = generate_signals(frame)
-    latest = frame.tail(1).iloc[0]
+    crash_msg = detect_crash(frame)
 
-    st.subheader(f"📊 {ticker}")
+    # Show latest signal
+    row = frame.tail(1).iloc[0]
     st.write(
-        f"**Close:** {latest['Close']:.2f} | "
-        f"**MA{MA_PERIOD}:** {latest[f'MA{MA_PERIOD}']:.2f} | "
-        f"**RSI:** {latest['RSI']:.2f} | "
-        f"**Drawdown:** {latest['Drawdown']:.2f}% | "
-        f"**Signal:** {latest['Signal']}"
+        f"Close: {row['Close']:.2f} | "
+        f"MA{MA_PERIOD}: {row[f'MA{MA_PERIOD}']:.2f} | "
+        f"RSI: {row['RSI']:.2f} | "
+        f"Signal: {row['Signal']}"
     )
+    st.info(crash_msg)
 
-    # Charts
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=True,
-                                   gridspec_kw={'height_ratios': [3, 1]})
-    ax1.plot(frame.index, frame["Close"], label="Close", color="blue")
-    ax1.plot(frame.index, frame[f"MA{MA_PERIOD}"], label=f"MA{MA_PERIOD}", color="orange")
-    ax1.legend(); ax1.grid(True); ax1.set_ylabel("Price")
+    # Performance metrics
+    perf = calculate_performance(frame)
+    if perf:
+        cols = st.columns(4)
+        cols[0].metric("Total Return (%)", f"{perf['Total Return (%)']:.2f}")
+        cols[1].metric("CAGR (%)", f"{perf['CAGR (%)']:.2f}")
+        cols[2].metric("Max Drawdown (%)", f"{perf['Max Drawdown (%)']:.2f}")
+        cols[3].metric("Volatility (%)", f"{perf['Volatility (%)']:.2f}")
 
-    ax2.plot(frame.index, frame["RSI"], label="RSI", color="purple")
-    ax2.axhline(70, color="red", linestyle="--")
-    ax2.axhline(30, color="green", linestyle="--")
-    ax2.legend(); ax2.grid(True); ax2.set_ylabel("RSI"); ax2.set_xlabel("Date")
-
+    # Chart
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(frame.index, frame["Close"], label="Close")
+    ax.plot(frame.index, frame[f"MA{MA_PERIOD}"], label=f"MA{MA_PERIOD}")
+    ax.set_title(f"{ticker} Price & MA")
+    ax.legend()
     st.pyplot(fig)
-
-    with st.expander(f"Historical signals for {ticker}"):
-        st.dataframe(frame.tail(30))
-
-    csv = frame.to_csv().encode("utf-8")
-    st.download_button(f"Download {ticker} CSV", csv, file_name=f"{ticker}_signals.csv", mime="text/csv")
 
 
 # In[ ]:
