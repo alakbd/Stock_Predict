@@ -111,8 +111,9 @@ def fetch_dynamic_news(source="Global"):
 
     if source == "Global":
         sources = {
-            "Yahoo Commodities": "https://feeds.finance.yahoo.com/rss/2.0/headline?s=CL=F&region=US&lang=en-US",
-            "The Investing.com": "https://www.investing.com/rss/news_301.rss",
+            "CNBC World": "https://www.cnbc.com/world/?region=world",
+            "MarketWatch": "https://www.marketwatch.com/markets",
+            "Nasdaq News": "https://www.nasdaq.com/news-and-insights",
         }
     elif source == "Irish":
         sources = {
