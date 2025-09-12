@@ -141,19 +141,16 @@ st.set_page_config(page_title="Trading Signal Dashboard", layout="wide")
 
 
 # Sidebar news (moved below settings, now clickable links)
+# News Section
 st.sidebar.markdown("---")
-st.sidebar.header("📰 Top Market News & Analysis")
+st.sidebar.header("📰 Live Market News")
+news = fetch_dynamic_news()
+if news:
+    for title, link in news:
+        st.sidebar.markdown(f"- [{title}]({link})")
+else:
+    st.sidebar.write("No news available right now.")
 
-# Example static links (could also fetch dynamically)
-news_links = [
-    ("Dow Jones Futures: Nvidia Is Next Big Market Test After Powell-Led Rally",
-     "https://www.investors.com/market-trend/stock-market-today/dow-jones-futures-market-rallies-highs-dovish-powell-nvidia-earnings/?utm_source=chatgpt.com"),
-    ("After 9 months on hold, the Fed could cut rates in September",
-     "https://www.marketwatch.com/story/after-9-months-on-hold-the-fed-could-cut-rates-in-september-why-the-long-pause-may-extend-stocks-rally-e90f3012?utm_source=chatgpt.com"),
-    ("The stock market soared following Fed Chair Powell's speech",
-     "https://www.marketwatch.com/story/the-stock-market-is-surging-following-fed-chair-powells-speech-why-it-might-just-be-a-late-summer-rally-95e4c2bd?utm_source=chatgpt.com"),
-    
-]
 
 for title, url in news_links:
     st.sidebar.markdown(f"- [{title}]({url})")
