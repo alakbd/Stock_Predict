@@ -111,13 +111,13 @@ def fetch_dynamic_news(source="Global"):
 
     if source == "Global":
         sources = {
-            "Reuters Commodities": "https://www.reuters.com/markets/commodities/",
-            "Bloomberg Commodities": "https://www.bloomberg.com/commodities/",
+            "Yahoo Commodities": "https://feeds.finance.yahoo.com/rss/2.0/headline?s=CL=F&region=US&lang=en-US",
+            "The Investing.com": "https://www.investing.com/rss/news_301.rss",
         }
     elif source == "Irish":
         sources = {
             "Irish Times Markets": "https://www.irishtimes.com/business/markets/",
-            "The Investing.com": "https://www.investing.com/rss/news_301.rss",
+            "The Journal Business": "https://www.thejournal.ie/business/",
         }
 
     for name, url in sources.items():
