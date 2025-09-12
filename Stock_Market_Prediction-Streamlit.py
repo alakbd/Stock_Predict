@@ -122,19 +122,29 @@ def fetch_dynamic_news(source="Global"):
 
     for name, url in sources.items():
         try:
-            resp = requests.get(url, timeout=10)
+            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
             soup = BeautifulSoup(resp.text, "html.parser")
-            for a in soup.find_all("a", href=True):
+
+            # Yahoo Finance headlines
+            if "yahoo" in url:
+                headlines = soup.select("h3 a")
+            # Investing.com headlines
+            elif "investing" in url:
+                headlines = soup.select("article a")
+            # Irish Times / The Journal fallback
+            else:
+                headlines = soup.find_all("a", href=True)
+
+            for a in headlines:
                 title = a.get_text(strip=True)
-                href = a["href"]
-                if title and len(title) > 40:
+                href = a.get("href")
+                if title and len(title) > 15:
                     link = href if href.startswith("http") else url.rstrip("/") + "/" + href.lstrip("/")
                     news_items.append((title, link))
         except Exception as e:
             news_items.append((f"⚠️ Could not fetch {name}: {e}", url))
 
     return news_items[:8]
-
 
 # Sidebar settings
 
