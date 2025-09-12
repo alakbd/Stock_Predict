@@ -127,12 +127,12 @@ def fetch_dynamic_news(source="Global", max_articles=10):
     for feed_url in feeds:
         try:
             feed = feedparser.parse(feed_url)
-            for entry in feed.entries[:5]:  # top 5 per source
+            for entry in feed.entries[:5]:
                 news_items.append((entry.title, entry.link))
         except Exception as e:
             news_items.append((f"⚠️ Could not fetch feed: {e}", feed_url))
 
-    return news_items[:max_articles]
+    return news_items[:10]
 
  
 # Sidebar settings
