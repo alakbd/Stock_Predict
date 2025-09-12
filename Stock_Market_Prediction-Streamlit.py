@@ -113,7 +113,7 @@ def fetch_dynamic_news(source="Global"):
         sources = {
             "CNBC World": "https://www.cnbc.com/world/?region=world",
             "MarketWatch": "https://www.marketwatch.com/markets",
-            "Nasdaq News": "https://www.nasdaq.com/news-and-insights",
+           
         }
     elif source == "Irish":
         sources = {
